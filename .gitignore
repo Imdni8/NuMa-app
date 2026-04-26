@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# my files
+/Designs
+CLAUDE.md
+About_NuMa.md
