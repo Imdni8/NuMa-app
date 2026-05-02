@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Activity, Event } from './types';
-import { dateKey, shiftDateKey, todayKey } from './date';
+import { dateKey } from './date';
 
 const DEFAULT_ACTIVITIES: ReadonlyArray<Pick<Activity, 'name' | 'emoji'>> = [
   { name: 'Feeding', emoji: '🍼' },
@@ -18,8 +18,8 @@ function newId(): string {
 type State = {
   activities: Activity[];
   events: Event[];
-  selectedDate: string;
   _didSeedDefaults: boolean;
+  _didSeedSampleEvents: boolean;
 };
 
 const STORAGE_KEY = 'numa-state';
@@ -27,8 +27,8 @@ const STORAGE_KEY = 'numa-state';
 let state: State = {
   activities: [],
   events: [],
-  selectedDate: todayKey(),
   _didSeedDefaults: false,
+  _didSeedSampleEvents: false,
 };
 
 let hydrated = false;
@@ -81,6 +81,10 @@ export function useNuMaStore<T>(selector: (s: State) => T): T {
   );
 }
 
+export function getNuMaState(): State {
+  return state;
+}
+
 export const numaStorePersist = {
   hasHydrated: () => hydrated,
   onFinishHydration: (listener: () => void) => {
@@ -94,14 +98,6 @@ export const numaStorePersist = {
     };
   },
 };
-
-export function setSelectedDate(key: string) {
-  setState(() => ({ selectedDate: key }));
-}
-
-export function shiftSelectedDate(deltaDays: number) {
-  setState((s) => ({ selectedDate: shiftDateKey(s.selectedDate, deltaDays) }));
-}
 
 export function addEvent(activityId: string) {
   setState((s) => ({
@@ -142,6 +138,12 @@ export function deleteActivity(id: string) {
   }));
 }
 
+export function deleteEvent(id: string) {
+  setState((s) => ({
+    events: s.events.filter((e) => e.id !== id),
+  }));
+}
+
 export function seedDefaultsOnce() {
   if (state._didSeedDefaults) return;
   setState((s) => {
@@ -161,6 +163,41 @@ export function seedDefaultsOnce() {
   });
 }
 
+export function seedSampleEventsOnce() {
+  if (state._didSeedSampleEvents) return;
+  setState((s) => {
+    if (s.activities.length === 0) return s;
+    const sampleEvents: Event[] = [];
+    const now = new Date();
+    const TEST_DAYS = 14;
+    for (let dayOffset = 0; dayOffset < TEST_DAYS; dayOffset++) {
+      for (const activity of s.activities) {
+        if (Math.random() < 0.2) continue;
+        const dayCount = 1 + Math.floor(Math.random() * 5);
+        for (let i = 0; i < dayCount; i++) {
+          const eventDate = new Date(now);
+          eventDate.setDate(now.getDate() - dayOffset);
+          eventDate.setHours(
+            8 + Math.floor(Math.random() * 12),
+            Math.floor(Math.random() * 60),
+            0,
+            0
+          );
+          sampleEvents.push({
+            id: newId(),
+            activityId: activity.id,
+            timestamp: eventDate.toISOString(),
+          });
+        }
+      }
+    }
+    return {
+      events: [...s.events, ...sampleEvents],
+      _didSeedSampleEvents: true,
+    };
+  });
+}
+
 export function selectActivityCount(activityId: string, dayKey: string) {
   return (s: State) =>
     s.events.filter(
@@ -172,5 +209,5 @@ export function selectEventsForActivityOnDate(activityId: string, dayKey: string
   return (s: State) =>
     s.events
       .filter((e) => e.activityId === activityId && dateKey(new Date(e.timestamp)) === dayKey)
-      .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }

@@ -1,32 +1,43 @@
-import { StyleSheet, View as RNView } from 'react-native';
+import { Pressable, StyleSheet, View as RNView } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
+import { todayKey } from '@/lib/date';
 import { selectActivityCount, useNuMaStore } from '@/lib/store';
 import type { Activity } from '@/lib/types';
+
+type Props = {
+  activity: Activity;
+  width: number;
+  onPress: () => void;
+  onLongPress?: () => void;
+};
 
 export default function ActivityTile({
   activity,
   width,
-}: {
-  activity: Activity;
-  width: number;
-}) {
-  const dayKey = useNuMaStore((s) => s.selectedDate);
-  const count = useNuMaStore(selectActivityCount(activity.id, dayKey));
+  onPress,
+  onLongPress,
+}: Props) {
+  const count = useNuMaStore(selectActivityCount(activity.id, todayKey()));
 
   return (
-    <View
-      lightColor="#E8E8E8"
-      darkColor="#2A2A2A"
-      style={[styles.tile, { width }]}>
-      <Text style={styles.count}>{count}</Text>
-      <RNView style={styles.bottomRow}>
-        <Text style={styles.emoji}>{activity.emoji}</Text>
-        <Text style={styles.name} numberOfLines={1}>
-          {activity.name}
-        </Text>
-      </RNView>
-    </View>
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      style={({ pressed }) => [{ width }, pressed && styles.pressed]}>
+      <View
+        lightColor="#E8E8E8"
+        darkColor="#2A2A2A"
+        style={styles.tile}>
+        <Text style={styles.count}>{count}</Text>
+        <RNView style={styles.bottomRow}>
+          <Text style={styles.emoji}>{activity.emoji}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {activity.name}
+          </Text>
+        </RNView>
+      </View>
+    </Pressable>
   );
 }
 
@@ -36,6 +47,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     justifyContent: 'space-between',
+  },
+  pressed: {
+    opacity: 0.7,
   },
   count: {
     fontSize: 56,
