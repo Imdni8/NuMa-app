@@ -24,8 +24,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarStyle: {
           height: 56 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: insets.bottom + 6,
+          paddingBottom: insets.bottom,
         },
       }}>
       <Tabs.Screen
