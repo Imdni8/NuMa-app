@@ -22,7 +22,31 @@ type State = {
   _didSeedSampleEvents: boolean;
 };
 
-const STORAGE_KEY = 'numa-state';
+const TESTER_KEY = 'numa:tester';
+
+function getStateKey(): string | null {
+  return tester ? `numa:${tester}:state` : null;
+}
+
+let tester: string | null = null;
+let testerLoaded = false;
+const testerListeners = new Set<() => void>();
+
+export type TesterStatus = 'loading' | 'absent' | 'present';
+let testerStatusSnapshot: TesterStatus = 'loading';
+
+function recomputeTesterStatus() {
+  testerStatusSnapshot = !testerLoaded
+    ? 'loading'
+    : tester
+    ? 'present'
+    : 'absent';
+}
+
+function notifyTester() {
+  recomputeTesterStatus();
+  testerListeners.forEach((l) => l());
+}
 
 let state: State = {
   activities: [],
@@ -43,7 +67,10 @@ function setState(updater: (s: State) => Partial<State>) {
   state = { ...state, ...updater(state) };
   notify();
   if (hydrated) {
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    const key = getStateKey();
+    if (key) {
+      AsyncStorage.setItem(key, JSON.stringify(state)).catch(() => {});
+    }
   }
 }
 
@@ -54,23 +81,77 @@ function subscribe(listener: () => void) {
   };
 }
 
-if (typeof window !== 'undefined') {
-  AsyncStorage.getItem(STORAGE_KEY)
-    .then((raw) => {
-      if (raw) {
-        try {
-          state = { ...state, ...JSON.parse(raw) };
-        } catch {
-          // ignore corrupt persisted state
-        }
+async function hydrateState() {
+  const key = getStateKey();
+  if (!key) {
+    hydrated = true;
+    notify();
+    hydrationListeners.forEach((l) => l());
+    hydrationListeners.clear();
+    return;
+  }
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) {
+      try {
+        state = { ...state, ...JSON.parse(raw) };
+      } catch {
+        // ignore corrupt persisted state
       }
+    }
+  } catch {
+    // ignore storage failures
+  }
+  hydrated = true;
+  notify();
+  hydrationListeners.forEach((l) => l());
+  hydrationListeners.clear();
+}
+
+if (typeof window !== 'undefined') {
+  AsyncStorage.getItem(TESTER_KEY)
+    .then((stored) => {
+      tester = stored && stored.trim() ? stored.trim() : null;
     })
+    .catch(() => {})
     .finally(() => {
-      hydrated = true;
-      notify();
-      hydrationListeners.forEach((l) => l());
-      hydrationListeners.clear();
+      testerLoaded = true;
+      notifyTester();
+      if (tester) {
+        hydrateState();
+      }
     });
+}
+
+export function setTester(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  tester = trimmed;
+  AsyncStorage.setItem(TESTER_KEY, trimmed).catch(() => {});
+  notifyTester();
+  // Reset to initial state for the new tester (if tester switched, prevents leakage),
+  // then load any saved data for this tester.
+  state = {
+    activities: [],
+    events: [],
+    _didSeedDefaults: false,
+    _didSeedSampleEvents: false,
+  };
+  hydrated = false;
+  hydrateState();
+}
+
+export function useTesterStatus(): TesterStatus {
+  return useSyncExternalStore(
+    (l) => {
+      testerListeners.add(l);
+      return () => {
+        testerListeners.delete(l);
+      };
+    },
+    () => testerStatusSnapshot,
+    () => testerStatusSnapshot
+  );
 }
 
 export function useNuMaStore<T>(selector: (s: State) => T): T {

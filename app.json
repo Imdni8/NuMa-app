@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "NuMa-app",
+    "name": "NuMa",
     "slug": "NuMa-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -8,6 +8,7 @@
     "scheme": "numaapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "description": "Track child-care activities — feedings, burpings, nappy changes — at a tap.",
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -27,7 +28,14 @@
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "NuMa",
+      "shortName": "NuMa",
+      "description": "Track child-care activities — feedings, burpings, nappy changes — at a tap.",
+      "themeColor": "#7C5BC4",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "plugins": [
       "expo-router"

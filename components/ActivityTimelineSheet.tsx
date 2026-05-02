@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Animated,
   Modal,
   PanResponder,
@@ -158,39 +157,49 @@ export default function ActivityTimelineSheet({
     });
   };
 
-  const confirmDeleteEvent = (event: Event) => {
-    const time = formatTime(event.timestamp);
-    Alert.alert(
-      'Delete event?',
-      `Remove the ${activity.name.toLowerCase()} entry at ${time}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteEvent(event.id),
-        },
-      ]
-    );
+  type ConfirmAction =
+    | { kind: 'event'; eventId: string; time: string }
+    | { kind: 'activity' };
+  const [confirming, setConfirming] = useState<ConfirmAction | null>(null);
+
+  const requestDeleteEvent = (event: Event) => {
+    setConfirming({
+      kind: 'event',
+      eventId: event.id,
+      time: formatTime(event.timestamp),
+    });
   };
 
-  const confirmDeleteActivity = () => {
-    Alert.alert(
-      `Delete ${activity.name}?`,
-      'This will also delete all logged events for this activity. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteActivity(activity.id);
-            onClose();
-          },
-        },
-      ]
-    );
+  const requestDeleteActivity = () => {
+    setConfirming({ kind: 'activity' });
   };
+
+  const cancelConfirm = () => setConfirming(null);
+
+  const executeConfirm = () => {
+    if (!confirming) return;
+    if (confirming.kind === 'event') {
+      deleteEvent(confirming.eventId);
+      setConfirming(null);
+    } else {
+      deleteActivity(activity.id);
+      setConfirming(null);
+      onClose();
+    }
+  };
+
+  const confirmTitle =
+    confirming?.kind === 'event'
+      ? 'Delete event?'
+      : confirming?.kind === 'activity'
+      ? `Delete ${activity.name}?`
+      : '';
+  const confirmBody =
+    confirming?.kind === 'event'
+      ? `Remove the ${activity.name.toLowerCase()} entry at ${confirming.time}?`
+      : confirming?.kind === 'activity'
+      ? 'This will also delete all logged events for this activity. This cannot be undone.'
+      : '';
 
   return (
     <Modal visible animationType="slide" transparent onRequestClose={onClose}>
@@ -223,7 +232,7 @@ export default function ActivityTimelineSheet({
                 <FontAwesome name="pencil" size={20} color={iconColor} />
               </Pressable>
               <Pressable
-                onPress={confirmDeleteActivity}
+                onPress={requestDeleteActivity}
                 hitSlop={12}
                 style={styles.actionBtn}>
                 <FontAwesome name="trash-o" size={20} color={iconColor} />
@@ -314,7 +323,7 @@ export default function ActivityTimelineSheet({
                               {formatTime(e.timestamp)}
                             </Text>
                             <Pressable
-                              onPress={() => confirmDeleteEvent(e)}
+                              onPress={() => requestDeleteEvent(e)}
                               hitSlop={12}>
                               <FontAwesome
                                 name="trash-o"
@@ -365,6 +374,49 @@ export default function ActivityTimelineSheet({
               />
             </Pressable>
           </RNView>
+
+          {confirming && (
+            <RNView style={styles.confirmOverlay}>
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={cancelConfirm}
+              />
+              <RNView
+                style={[
+                  styles.confirmDialog,
+                  { backgroundColor: sheetBg },
+                ]}>
+                <Text style={styles.confirmTitle}>{confirmTitle}</Text>
+                <Text style={styles.confirmBody}>{confirmBody}</Text>
+                <RNView style={styles.confirmButtons}>
+                  <Pressable
+                    onPress={cancelConfirm}
+                    style={styles.confirmButton}
+                    hitSlop={4}>
+                    <Text
+                      style={[
+                        styles.confirmButtonText,
+                        { color: iconColor },
+                      ]}>
+                      Cancel
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={executeConfirm}
+                    style={styles.confirmButton}
+                    hitSlop={4}>
+                    <Text
+                      style={[
+                        styles.confirmButtonText,
+                        styles.confirmButtonDestructive,
+                      ]}>
+                      Delete
+                    </Text>
+                  </Pressable>
+                </RNView>
+              </RNView>
+            </RNView>
+          )}
         </Animated.View>
       </RNView>
     </Modal>
@@ -546,5 +598,49 @@ const styles = StyleSheet.create({
   footerBtnText: {
     fontSize: 15,
     fontWeight: '500',
+  },
+  confirmOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmDialog: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 24,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  confirmBody: {
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.8,
+    marginBottom: 24,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 24,
+  },
+  confirmButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  confirmButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  confirmButtonDestructive: {
+    color: '#E0476F',
   },
 });
