@@ -23,7 +23,6 @@ import {
   getNuMaState,
   numaStorePersist,
   seedDefaultsOnce,
-  seedSampleEventsOnce,
   useNuMaStore,
 } from '@/lib/store';
 import type { Activity } from '@/lib/types';
@@ -59,15 +58,11 @@ export default function ActivitiesScreen() {
   }, [openActivityId, openActivity]);
 
   useEffect(() => {
-    const seed = () => {
-      seedDefaultsOnce();
-      seedSampleEventsOnce();
-    };
     if (numaStorePersist.hasHydrated()) {
-      seed();
+      seedDefaultsOnce();
       return;
     }
-    return numaStorePersist.onFinishHydration(seed);
+    return numaStorePersist.onFinishHydration(seedDefaultsOnce);
   }, []);
 
   const handleTilePress = useCallback((activity: Activity) => {

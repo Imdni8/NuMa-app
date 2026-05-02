@@ -19,7 +19,6 @@ type State = {
   activities: Activity[];
   events: Event[];
   _didSeedDefaults: boolean;
-  _didSeedSampleEvents: boolean;
 };
 
 const TESTER_KEY = 'numa:tester';
@@ -52,7 +51,6 @@ let state: State = {
   activities: [],
   events: [],
   _didSeedDefaults: false,
-  _didSeedSampleEvents: false,
 };
 
 let hydrated = false;
@@ -135,7 +133,6 @@ export function setTester(name: string) {
     activities: [],
     events: [],
     _didSeedDefaults: false,
-    _didSeedSampleEvents: false,
   };
   hydrated = false;
   hydrateState();
@@ -240,41 +237,6 @@ export function seedDefaultsOnce() {
         })),
       ],
       _didSeedDefaults: true,
-    };
-  });
-}
-
-export function seedSampleEventsOnce() {
-  if (state._didSeedSampleEvents) return;
-  setState((s) => {
-    if (s.activities.length === 0) return s;
-    const sampleEvents: Event[] = [];
-    const now = new Date();
-    const TEST_DAYS = 14;
-    for (let dayOffset = 0; dayOffset < TEST_DAYS; dayOffset++) {
-      for (const activity of s.activities) {
-        if (Math.random() < 0.2) continue;
-        const dayCount = 1 + Math.floor(Math.random() * 5);
-        for (let i = 0; i < dayCount; i++) {
-          const eventDate = new Date(now);
-          eventDate.setDate(now.getDate() - dayOffset);
-          eventDate.setHours(
-            8 + Math.floor(Math.random() * 12),
-            Math.floor(Math.random() * 60),
-            0,
-            0
-          );
-          sampleEvents.push({
-            id: newId(),
-            activityId: activity.id,
-            timestamp: eventDate.toISOString(),
-          });
-        }
-      }
-    }
-    return {
-      events: [...s.events, ...sampleEvents],
-      _didSeedSampleEvents: true,
     };
   });
 }
